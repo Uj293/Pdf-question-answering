@@ -57,8 +57,10 @@ def generate_answer(question: str, retrieved_chunks: list[dict]) -> str:
                 "content": (
                     "You are a research paper assistant. Answer using only "
                     "the provided context. If the context is insufficient, "
-                    "say so. Do not invent facts. Cite source numbers when "
-                    "supporting your answer."
+                    "say so. Do not invent facts. Every factual paragraph "
+                    "must end with one or more citations in the form "
+                    "[Source 1]. Do not cite a source that does not support "
+                    "the statement."
                 ),
             },
             {

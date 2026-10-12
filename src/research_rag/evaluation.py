@@ -22,6 +22,7 @@ def hit_rate_at_k(
             embeddings,
             chunks,
             k=k,
+            query=query,
         )
 
         retrieved_chunks = {

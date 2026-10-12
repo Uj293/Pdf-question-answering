@@ -3,8 +3,12 @@ import pymupdf
 
 from research_rag.chunking import chunk_text
 from research_rag.embeddings import create_embeddings, create_query_embedding
-from research_rag.retrieval import retrieve_top_k
 from research_rag.evaluation import hit_rate_at_k
+from research_rag.generation import generate_answer
+from research_rag.retrieval import retrieve_top_k
+
+
+DEMO_QUESTION = "Why does the Transformer use positional encoding?"
 
 
 def main() -> None:
@@ -15,57 +19,62 @@ def main() -> None:
         text = "\n".join(page.get_text() for page in doc)
 
     # 2. Split the extracted text into chunks.
-    chunks = chunk_text(text)
+    chunks = chunk_text(
+        text,
+        chunk_size=1000,
+        overlap=150,
+    )
     print(f"Total chunks: {len(chunks)}")
-
-    for index, chunk in enumerate(chunks):
-        if "positional encoding" in chunk.lower() or "sequence order" in chunk.lower():
-            print(f"\n{'=' * 15} CHUNK {index} {'=' * 15}")
-            print(chunk)
-
-
-    # Debug: inspect chunks related to positional encoding.
-    for index in [4, 9, 10, 11, 12, 14]:
-        print(f"\n{'=' * 25} CHUNK {index} {'=' * 25}")
-        print(chunks[index])
-
 
     # 3. Generate embeddings for all chunks once.
     embeddings = create_embeddings(chunks)
 
-    # 4. Define evaluation questions and relevant chunk IDs.
-    # These labels are provisional and should be verified by
-    # inspecting the full contents of the relevant chunks.
+    # 4. Retrieve context and generate a grounded answer with Ollama.
+    demo_query_embedding = create_query_embedding(DEMO_QUESTION)
+    retrieved_chunks = retrieve_top_k(
+        demo_query_embedding,
+        embeddings,
+        chunks,
+        k=3,
+        query=DEMO_QUESTION,
+    )
+    answer = generate_answer(DEMO_QUESTION, retrieved_chunks)
+
+    print(f"\nQuestion: {DEMO_QUESTION}")
+    print("Retrieved chunk IDs:", [item["chunk_index"] for item in retrieved_chunks])
+    print(f"\nAnswer:\n{answer}")
+
+    # 5. Define evaluation questions and relevant chunk IDs.
     evaluation_questions = [
         {
             "question": "What is the Transformer architecture?",
-            "relevant_chunks": [4],
+            "relevant_chunks": [7, 8, 9],
         },
         {
             "question": "How does multi-head attention work?",
-            "relevant_chunks": [5, 6],
+            "relevant_chunks": [12, 13, 14],
         },
         {
             "question": "Why does the Transformer use positional encoding?",
-            "relevant_chunks": [9, 10, 11],
+            "relevant_chunks": [17, 18, 19],
         },
         {
             "question": (
                 "What are the advantages of self-attention "
                 "over recurrent layers?"
             ),
-            "relevant_chunks": [9, 10],
+            "relevant_chunks": [20, 21, 22, 23],
         },
         {
             "question": (
                 "How was the Transformer evaluated "
                 "on machine translation?"
             ),
-            "relevant_chunks": [12, 13, 14],
+            "relevant_chunks": [24, 26, 27, 28, 29],
         },
     ]
 
-    # 5. Evaluate retrieval performance at k=3.
+    # 6. Evaluate retrieval performance at k=3.
     hit_rate_at_k(
         questions=evaluation_questions,
         chunks=chunks,
